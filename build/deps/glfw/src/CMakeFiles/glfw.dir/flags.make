@@ -4,7 +4,7 @@
 # compile C with /Library/Developer/CommandLineTools/usr/bin/cc
 C_DEFINES = -D_GLFW_COCOA
 
-C_INCLUDES = -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/include -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/src -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/src
+C_INCLUDES = -I/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/include -I/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/src -I/Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/src
 
 C_FLAGSarm64 = -std=c99 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -fPIC -Wall
 

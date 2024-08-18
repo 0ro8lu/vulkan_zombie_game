@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/src/main.cpp" "CMakeFiles/App.dir/src/main.cpp.o" "gcc" "CMakeFiles/App.dir/src/main.cpp.o.d"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/src/main.cpp" "CMakeFiles/App.dir/src/main.cpp.o" "gcc" "CMakeFiles/App.dir/src/main.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

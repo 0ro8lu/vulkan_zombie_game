@@ -4,7 +4,7 @@
 # compile CXX with /Library/Developer/CommandLineTools/usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glm -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/stb_image -I/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/include -isystem /opt/homebrew/include -isystem /usr/local/include
+CXX_INCLUDES = -I/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glm -I/Users/macjack/Documents/XCodeProjects/zombie-game/deps/stb_image -I/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/include -isystem /opt/homebrew/include -isystem /usr/local/include -isystem /Users/macjack/Documents/XCodeProjects/zombie-game/deps/VulkanMemoryAllocator-3.1.0/include
 
 CXX_FLAGSarm64 = -std=gnu++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk
 

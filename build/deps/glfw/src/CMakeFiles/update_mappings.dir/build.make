@@ -53,10 +53,10 @@ RM = /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake
+CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build
+CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game/build
 
 # Utility rule file for update_mappings.
 
@@ -67,8 +67,8 @@ include deps/glfw/src/CMakeFiles/update_mappings.dir/compiler_depend.make
 include deps/glfw/src/CMakeFiles/update_mappings.dir/progress.make
 
 deps/glfw/src/CMakeFiles/update_mappings:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Updating gamepad mappings from upstream repository"
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/src && /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -P /Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/CMake/GenerateMappings.cmake mappings.h.in mappings.h
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/macjack/Documents/XCodeProjects/zombie-game/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Updating gamepad mappings from upstream repository"
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/src && /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -P /Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/CMake/GenerateMappings.cmake mappings.h.in mappings.h
 
 update_mappings: deps/glfw/src/CMakeFiles/update_mappings
 update_mappings: deps/glfw/src/CMakeFiles/update_mappings.dir/build.make
@@ -79,10 +79,10 @@ deps/glfw/src/CMakeFiles/update_mappings.dir/build: update_mappings
 .PHONY : deps/glfw/src/CMakeFiles/update_mappings.dir/build
 
 deps/glfw/src/CMakeFiles/update_mappings.dir/clean:
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/src && $(CMAKE_COMMAND) -P CMakeFiles/update_mappings.dir/cmake_clean.cmake
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/src && $(CMAKE_COMMAND) -P CMakeFiles/update_mappings.dir/cmake_clean.cmake
 .PHONY : deps/glfw/src/CMakeFiles/update_mappings.dir/clean
 
 deps/glfw/src/CMakeFiles/update_mappings.dir/depend:
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/macjack/Documents/XCodeProjects/vulkan-cmake /Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/src /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/src /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/src/CMakeFiles/update_mappings.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/macjack/Documents/XCodeProjects/zombie-game /Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/src /Users/macjack/Documents/XCodeProjects/zombie-game/build /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/src /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/src/CMakeFiles/update_mappings.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : deps/glfw/src/CMakeFiles/update_mappings.dir/depend
 

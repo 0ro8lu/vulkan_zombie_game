@@ -20,9 +20,10 @@ add_executable(App
 )
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/glfw)
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/VulkanMemoryAllocator-3.1.0 SYSTEM)
+
 target_include_directories(App PRIVATE "${CMAKE_SOURCE_DIR}/deps/glm")
 target_include_directories(App PRIVATE "${CMAKE_SOURCE_DIR}/deps/stb_image")
-# add_subdirectory(${CMAKE_SOURCE_DIR}/deps/glm)
 
 # Use C++17
 set_target_properties(App PROPERTIES CXX_STANDARD 17)
@@ -32,6 +33,7 @@ set_target_properties(App PROPERTIES CXX_STANDARD 17)
 # target_treat_all_warnings_as_errors(App)
 
 find_package(Vulkan REQUIRED)
+# find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
-target_link_libraries(App glfw glm::glm Vulkan::Vulkan)
+target_link_libraries(App glfw glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator)

@@ -7,16 +7,17 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/CMakeLists.txt"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/CMakeLists.txt"
   "CMakeFiles/3.28.0/CMakeCCompiler.cmake"
   "CMakeFiles/3.28.0/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.28.0/CMakeSystem.cmake"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/CMake/cmake_uninstall.cmake.in"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/CMake/glfw3.pc.in"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/CMake/glfw3Config.cmake.in"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/CMakeLists.txt"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw/src/CMakeLists.txt"
-  "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/utils.cmake"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/VulkanMemoryAllocator-3.1.0/CMakeLists.txt"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/CMake/cmake_uninstall.cmake.in"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/CMake/glfw3.pc.in"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/CMake/glfw3Config.cmake.in"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/CMakeLists.txt"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw/src/CMakeLists.txt"
+  "/Users/macjack/Documents/XCodeProjects/zombie-game/utils.cmake"
   "/opt/homebrew/Cellar/cmake/3.28.0/share/cmake/Modules/BasicConfigVersion-SameMajorVersion.cmake.in"
   "/opt/homebrew/Cellar/cmake/3.28.0/share/cmake/Modules/CMakeCInformation.cmake"
   "/opt/homebrew/Cellar/cmake/3.28.0/share/cmake/Modules/CMakeCXXInformation.cmake"
@@ -71,6 +72,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "deps/glfw/CMakeFiles/CMakeDirectoryInformation.cmake"
   "deps/glfw/src/glfw3.pc"
   "deps/glfw/src/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "deps/VulkanMemoryAllocator-3.1.0/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:

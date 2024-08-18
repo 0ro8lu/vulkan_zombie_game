@@ -53,10 +53,10 @@ RM = /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake
+CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build
+CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game/build
 
 # Utility rule file for uninstall.
 
@@ -67,7 +67,7 @@ include deps/glfw/CMakeFiles/uninstall.dir/compiler_depend.make
 include deps/glfw/CMakeFiles/uninstall.dir/progress.make
 
 deps/glfw/CMakeFiles/uninstall:
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw && /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -P /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/cmake_uninstall.cmake
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw && /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -P /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/cmake_uninstall.cmake
 
 uninstall: deps/glfw/CMakeFiles/uninstall
 uninstall: deps/glfw/CMakeFiles/uninstall.dir/build.make
@@ -78,10 +78,10 @@ deps/glfw/CMakeFiles/uninstall.dir/build: uninstall
 .PHONY : deps/glfw/CMakeFiles/uninstall.dir/build
 
 deps/glfw/CMakeFiles/uninstall.dir/clean:
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw && $(CMAKE_COMMAND) -P CMakeFiles/uninstall.dir/cmake_clean.cmake
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw && $(CMAKE_COMMAND) -P CMakeFiles/uninstall.dir/cmake_clean.cmake
 .PHONY : deps/glfw/CMakeFiles/uninstall.dir/clean
 
 deps/glfw/CMakeFiles/uninstall.dir/depend:
-	cd /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/macjack/Documents/XCodeProjects/vulkan-cmake /Users/macjack/Documents/XCodeProjects/vulkan-cmake/deps/glfw /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/CMakeFiles/uninstall.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /Users/macjack/Documents/XCodeProjects/zombie-game/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/macjack/Documents/XCodeProjects/zombie-game /Users/macjack/Documents/XCodeProjects/zombie-game/deps/glfw /Users/macjack/Documents/XCodeProjects/zombie-game/build /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw /Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/CMakeFiles/uninstall.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : deps/glfw/CMakeFiles/uninstall.dir/depend
 

@@ -57,10 +57,10 @@ RM = /opt/homebrew/Cellar/cmake/3.28.0/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake
+CMAKE_SOURCE_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build
+CMAKE_BINARY_DIR = /Users/macjack/Documents/XCodeProjects/zombie-game/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -132,9 +132,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/CMakeFiles /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/macjack/Documents/XCodeProjects/zombie-game/build/CMakeFiles /Users/macjack/Documents/XCodeProjects/zombie-game/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/macjack/Documents/XCodeProjects/zombie-game/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target

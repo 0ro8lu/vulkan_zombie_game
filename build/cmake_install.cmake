@@ -1,4 +1,4 @@
-# Install script for directory: /Users/macjack/Documents/XCodeProjects/vulkan-cmake
+# Install script for directory: /Users/macjack/Documents/XCodeProjects/zombie-game
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,7 +39,12 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/deps/glfw/cmake_install.cmake")
+  include("/Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/glfw/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/Users/macjack/Documents/XCodeProjects/zombie-game/build/deps/VulkanMemoryAllocator-3.1.0/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -50,5 +55,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/macjack/Documents/XCodeProjects/vulkan-cmake/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/macjack/Documents/XCodeProjects/zombie-game/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
