@@ -1,4 +1,6 @@
 #include <_types/_uint32_t.h>
+#include <_types/_uint8_t.h>
+#include <sys/_types/_int32_t.h>
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -32,6 +34,8 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+const uint32_t MAX_NUM_OBJECTS = 300;
 
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
@@ -125,8 +129,11 @@ struct Vertex {
     }
 };
 
-struct UniformBufferObject {
+struct DynamicUBO {
     alignas(16) glm::mat4 model;
+};
+
+struct StaticUBO{
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 };
@@ -189,10 +196,16 @@ private:
     VkBuffer indexBuffer;
     VmaAllocation indexBufferAllocation;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VmaAllocation> uniformBuffersAllocation;
-    // std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    size_t dynamicAlignment = 0;
+
+    std::vector<VkBuffer> staticUniformBuffers;
+    std::vector<VkBuffer> dynamicUniformBuffers;
+    std::vector<VmaAllocation> staticUniformBuffersAllocation;
+    std::vector<VmaAllocation> dynamicDynamicBuffersAllocation;
+    std::vector<void*> staticUniformBuffersMapped;
+    std::vector<void*> dynamicUniformBuffersMapped;
+
+    uint32_t numObjects;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
@@ -275,10 +288,10 @@ private:
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
 
+        // Destroy static and dynamic buffers
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vmaDestroyBuffer(allocator, uniformBuffers[i], uniformBuffersAllocation[i]);
-            // vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            // vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            vmaDestroyBuffer(allocator, staticUniformBuffers[i], staticUniformBuffersAllocation[i]);
+            vmaDestroyBuffer(allocator, dynamicUniformBuffers[i], dynamicDynamicBuffersAllocation[i]);
         }
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -589,21 +602,28 @@ private:
     }
 
     void createDescriptorSetLayout() {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        VkDescriptorSetLayoutBinding saticUboLayoutBinding{};
+        saticUboLayoutBinding.binding = 0;
+        saticUboLayoutBinding.descriptorCount = 1;
+        saticUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        saticUboLayoutBinding.pImmutableSamplers = nullptr;
+        saticUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        
+        VkDescriptorSetLayoutBinding dynamicUboLayoutBinding{};
+        dynamicUboLayoutBinding.binding = 1;
+        dynamicUboLayoutBinding.descriptorCount = 1;
+        dynamicUboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        dynamicUboLayoutBinding.pImmutableSamplers = nullptr;
+        dynamicUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.binding = 2;
         samplerLayoutBinding.descriptorCount = 1;
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         samplerLayoutBinding.pImmutableSamplers = nullptr;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+        std::array<VkDescriptorSetLayoutBinding, 3> bindings = {saticUboLayoutBinding, dynamicUboLayoutBinding, samplerLayoutBinding};
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -985,8 +1005,6 @@ private:
         copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
         vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
-        // vkDestroyBuffer(device, stagingBuffer, nullptr);
-        // vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     void createIndexBuffer() {
@@ -1007,26 +1025,51 @@ private:
     }
 
     void createUniformBuffers() {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        // uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersAllocation.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+        //get physical device features
+        VkPhysicalDeviceProperties gpuProperties = {};
+        vkGetPhysicalDeviceProperties(physicalDevice, &gpuProperties);
+
+        // calculate dynamic uniform buffer alignment stride
+	    size_t alignMod = static_cast<size_t>(gpuProperties.limits.minUniformBufferOffsetAlignment);
+	    dynamicAlignment = (sizeof(DynamicUBO) / alignMod ) * alignMod;
+	    if ( sizeof(DynamicUBO) % alignMod > 0 ) {
+	        dynamicAlignment += alignMod;
+	    }
+        
+        // Calculate required alignment based on minimum device offset alignment
+        // size_t minUboAlignment = gpuProperties.limits.minUniformBufferOffsetAlignment;
+        // dynamicAlignment = sizeof(DynamicUBO);
+        // if (minUboAlignment > 0) {
+        //     dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
+        // }
+
+        VkDeviceSize staticBufferSize = sizeof(StaticUBO);
+        VkDeviceSize dynamicBufferSize = dynamicAlignment * MAX_NUM_OBJECTS;
+
+        staticUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        dynamicUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        
+        staticUniformBuffersAllocation.resize(MAX_FRAMES_IN_FLIGHT);
+        dynamicDynamicBuffersAllocation.resize(MAX_FRAMES_IN_FLIGHT);
+        
+        staticUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+        dynamicUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            uniformBuffersMapped[i] = createBuffer2(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, uniformBuffers[i], uniformBuffersAllocation[i]);
-            // createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-            // vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            staticUniformBuffersMapped[i] = createBuffer2(staticBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, staticUniformBuffers[i], staticUniformBuffersAllocation[i]);
+            dynamicUniformBuffersMapped[i] = createBuffer2(dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, dynamicUniformBuffers[i], dynamicDynamicBuffersAllocation[i]);
         }
     }
 
     void createDescriptorPool() {
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
-        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        std::array<VkDescriptorPoolSize, 3> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1053,33 +1096,46 @@ private:
         }
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
+            VkDescriptorBufferInfo staticBufferInfo{};
+            staticBufferInfo.buffer = staticUniformBuffers[i];
+            staticBufferInfo.offset = 0;
+            staticBufferInfo.range = sizeof(StaticUBO);
+
+            VkDescriptorBufferInfo dynamicBufferInfo{};
+            dynamicBufferInfo.buffer = dynamicUniformBuffers[i];
+            dynamicBufferInfo.offset = 0;
+            dynamicBufferInfo.range = sizeof(DynamicUBO);
 
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             imageInfo.imageView = textureImageView;
             imageInfo.sampler = textureSampler;
 
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+            std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = descriptorSets[i];
             descriptorWrites[0].dstBinding = 0;
             descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
+            descriptorWrites[0].pBufferInfo = &staticBufferInfo;
 
             descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[1].dstSet = descriptorSets[i];
             descriptorWrites[1].dstBinding = 1;
             descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
             descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
+            descriptorWrites[1].pBufferInfo = &dynamicBufferInfo;
+
+            descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[2].dstSet = descriptorSets[i];
+            descriptorWrites[2].dstBinding = 2;
+            descriptorWrites[2].dstArrayElement = 0;
+            descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrites[2].descriptorCount = 1;
+            descriptorWrites[2].pImageInfo = &imageInfo;
 
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
@@ -1252,15 +1308,13 @@ private:
 
             vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-            uint32_t offset = 0;
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &offset);
+            for(int i = 0; i < numObjects; i++) {
+                uint32_t dynamicOffset = static_cast<uint32_t>(i * dynamicAlignment);
 
-            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+                vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
 
-            // offset = 48;
-            // vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &offset);
-
-            // vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+                vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+            }
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1296,13 +1350,43 @@ private:
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-        UniformBufferObject ubo{};
-        ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
-        ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        std::vector<DynamicUBO> dynamicUBOs;
+
+        DynamicUBO dUbo{};
+        dUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(50, 0, 0));
+        dUbo.model = glm::scale(dUbo.model, glm::vec3(100, 100, 100));
+
+        dynamicUBOs.push_back(dUbo);
+
+        dUbo = DynamicUBO{};
+        dUbo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
+
+        dynamicUBOs.push_back(dUbo);
+
+        dUbo = DynamicUBO{};
+        dUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-50, 0, 0));
+        dUbo.model = glm::rotate(dUbo.model, (float)glm::radians(45.0), glm::vec3(0.0f, 0.0f, 1.0f));
+        dUbo.model = glm::scale(dUbo.model, glm::vec3(70, 70, 70));
+
+        dynamicUBOs.push_back(dUbo);
+
+        uint8_t* mappedUniform = reinterpret_cast<uint8_t*>(dynamicUniformBuffersMapped[currentImage]);
+
+        if(dynamicUBOs.size() > MAX_NUM_OBJECTS) {
+            throw std::runtime_error("trying to create more objects than the GPU can handle!");
+        }
+
+        numObjects = dynamicUBOs.size();
+        
+        for(int i = 0; i < numObjects; i++) {
+            memcpy(&mappedUniform[i * dynamicAlignment], &dynamicUBOs[i], sizeof(DynamicUBO));
+        }
+
+        StaticUBO ubo{};
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         ubo.proj = glm::ortho(-400.0f, 400.0f, -300.0f, 300.0f, -1000.0f, 1000.0f);
 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+        memcpy(staticUniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
     void drawFrame() {
