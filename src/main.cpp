@@ -1,5 +1,6 @@
 #include <_types/_uint32_t.h>
 #include <_types/_uint8_t.h>
+#include <string>
 #include <sys/_types/_int32_t.h>
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
@@ -34,6 +35,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const uint MAX_LAYERS = 8;
 
 const uint32_t MAX_NUM_OBJECTS = 300;
 
@@ -129,8 +131,9 @@ struct Vertex {
     }
 };
 
-struct DynamicUBO {
-    alignas(16) glm::mat4 model;
+struct alignas(16) DynamicUBO {
+    glm::mat4 model;
+    float array_index;
 };
 
 struct StaticUBO{
@@ -248,9 +251,10 @@ private:
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
-        createTextureImage();
-        createTextureImageView();
-        createTextureSampler();
+        // createTextureImage();
+        createTextureArray();
+        // createTextureImageView();
+        // createTextureSampler();
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -785,32 +789,153 @@ private:
         }
     }
 
-    void createTextureImage() {
-        int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load("../textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
+    void createTextureArray() {
+        std::vector<std::string> textureFiles = {"../textures/texture1.jpg", "../textures/texture2.jpg", "../textures/texture3.jpg"};
+        uint32_t layerCount = textureFiles.size();
+        
+        assert(layerCount <= MAX_LAYERS);
+        
+        std::vector<unsigned char> textureData;
 
-        if (!pixels) {
-            throw std::runtime_error("failed to load texture image!");
+        // read num_textures
+        uint32_t texWidth = 0, texHeight = 0;
+        size_t imageSize = 0;
+        for(int i = 0; i < textureFiles.size(); i++) {
+            int width, height, channels;
+            stbi_uc* pixels = stbi_load(textureFiles[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+            if (!pixels) {
+                throw std::runtime_error("Failed to load texture: " + textureFiles[i]);
+            }
+
+            // Ensure all textures have the same dimensions
+            if (i == 0) {
+                texWidth = width;
+                texHeight = height;
+            } else if (width != texWidth || height != texHeight) {
+                stbi_image_free(pixels);
+                throw std::runtime_error("All textures must have the same dimensions");
+            }
+
+            // Calculate size for this texture
+            imageSize = texWidth * texHeight * 4;  // 4 for RGBA
+
+            // Append this texture's data to our vector
+            textureData.insert(textureData.end(), pixels, pixels + imageSize);
+
+            // Free the loaded image
+            stbi_image_free(pixels);
         }
 
+        // create the staging buffer
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         VmaAllocation stagingBufferAllocation;
-        void* data = createBuffer2(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
 
-        memcpy(data, pixels, static_cast<size_t>(imageSize));
+        size_t totalSize = textureData.size();
+        void* data = createBuffer(totalSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
 
-        stbi_image_free(pixels);
+        // bind buffer and copy data into it
+        memcpy(data, textureData.data(), totalSize);
 
-        createImage2(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, textureImage, textureAllocation);
+        // Setup buffer copy regions for array layers
+		std::vector<VkBufferImageCopy> bufferCopyRegions;
 
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-            copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		// To keep this simple, we will only load layers and no mip level
+		for (uint32_t layer = 0; layer < textureFiles.size(); layer++)
+		{
+			// Setup a buffer image copy structure for the current array layer
+			VkBufferImageCopy bufferCopyRegion = {};
+			bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			bufferCopyRegion.imageSubresource.mipLevel = 0;
+			bufferCopyRegion.imageSubresource.baseArrayLayer = layer;
+			bufferCopyRegion.imageSubresource.layerCount = 1;
+			bufferCopyRegion.imageExtent.width = texWidth;
+			bufferCopyRegion.imageExtent.height = texHeight;
+			bufferCopyRegion.imageExtent.depth = 1;
+			bufferCopyRegion.bufferOffset = imageSize * layer;
+			bufferCopyRegions.push_back(bufferCopyRegion);
+		}
 
+        createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, textureImage, textureAllocation, textureFiles.size());
+
+        VkImageSubresourceRange subresourceRange = {};
+		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subresourceRange.baseMipLevel = 0;
+		subresourceRange.levelCount = 1;
+		subresourceRange.layerCount = textureFiles.size();
+
+        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange);
+        copyBufferToImage(stagingBuffer, textureImage, texWidth, texHeight, bufferCopyRegions);
+        transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresourceRange);
+        
+        //cleanup stuff
         vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
+
+        VkPhysicalDeviceProperties properties{};
+        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+        
+        // create sampler
+        VkSamplerCreateInfo sampler{};
+        sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sampler.magFilter = VK_FILTER_LINEAR;
+		sampler.minFilter = VK_FILTER_LINEAR;
+		sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		sampler.addressModeV = sampler.addressModeU;
+		sampler.addressModeW = sampler.addressModeU;
+		sampler.mipLodBias = 0.0f;
+		sampler.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+		sampler.compareOp = VK_COMPARE_OP_NEVER;
+		sampler.minLod = 0.0f;
+		sampler.maxLod = 0.0f;
+		sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+
+        if (vkCreateSampler(device, &sampler, nullptr, &textureSampler) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture sampler!");
+        }      
+
+		// Create image view
+        VkImageViewCreateInfo view{};
+        view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		view.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+		view.format = VK_FORMAT_R8G8B8A8_SRGB;
+		view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		view.subresourceRange.layerCount = textureFiles.size();
+		view.subresourceRange.levelCount = 1;
+		view.image = textureImage;
+
+        if (vkCreateImageView(device, &view, nullptr, &textureImageView) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture image view!");
+        }
     }
+
+    // void createTextureImage() {
+    //     int texWidth, texHeight, texChannels;
+    //     stbi_uc* pixels = stbi_load("../textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    //     VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    //     if (!pixels) {
+    //         throw std::runtime_error("failed to load texture image!");
+    //     }
+
+    //     VkBuffer stagingBuffer;
+    //     VkDeviceMemory stagingBufferMemory;
+    //     VmaAllocation stagingBufferAllocation;
+    //     void* data = createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
+
+    //     memcpy(data, pixels, static_cast<size_t>(imageSize));
+
+    //     stbi_image_free(pixels);
+
+        // createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, textureImage, textureAllocation);
+
+    //     transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    //         copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    //     transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    //     vmaDestroyBuffer(allocator, stagingBuffer, stagingBufferAllocation);
+    // }
 
     void createTextureImageView() {
         textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
@@ -860,7 +985,7 @@ private:
         return imageView;
     }
 
-    void createImage2(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaAllocationCreateFlagBits flags, VkImage& image, VmaAllocation& allocation) {
+    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaAllocationCreateFlagBits flags, VkImage& image, VmaAllocation& allocation, uint32_t layerCount) {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -868,7 +993,7 @@ private:
         imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
+        imageInfo.arrayLayers = layerCount;
         imageInfo.format = format;
         imageInfo.tiling = tiling;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -886,42 +1011,7 @@ private:
         }
     }
 
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = width;
-        imageInfo.extent.height = height;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate image memory!");
-        }
-
-        vkBindImageMemory(device, image, imageMemory, 0);
-    }
-
-    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageSubresourceRange subresourceRange) {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
         VkImageMemoryBarrier barrier{};
@@ -931,11 +1021,7 @@ private:
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image = image;
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange = subresourceRange;
 
         VkPipelineStageFlags sourceStage;
         VkPipelineStageFlags destinationStage;
@@ -968,25 +1054,10 @@ private:
         endSingleTimeCommands(commandBuffer);
     }
 
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, std::vector<VkBufferImageCopy> &bufferCopyRegions) {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-        VkBufferImageCopy region{};
-        region.bufferOffset = 0;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = {
-            width,
-            height,
-            1
-        };
-
-        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
 
         endSingleTimeCommands(commandBuffer);
     }
@@ -997,10 +1068,10 @@ private:
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         VmaAllocation stagingBufferAllocation;
-        void* data = createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
+        void* data = createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
         memcpy(data, vertices.data(), (size_t) bufferSize);
 
-        createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, BufferType::GPU_BUFFER, vertexBuffer, vertexBufferAllocation);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, BufferType::GPU_BUFFER, vertexBuffer, vertexBufferAllocation);
 
         copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 
@@ -1013,11 +1084,11 @@ private:
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         VmaAllocation stagingBufferAllocation;
-        void* data = createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
+        void* data = createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, BufferType::STAGING_BUFFER, stagingBuffer, stagingBufferAllocation);
 
         memcpy(data, indices.data(), (size_t) bufferSize);
 
-        createBuffer2(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, BufferType::GPU_BUFFER, indexBuffer, indexBufferAllocation);
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, BufferType::GPU_BUFFER, indexBuffer, indexBufferAllocation);
 
         copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
@@ -1037,13 +1108,6 @@ private:
 	        dynamicAlignment += alignMod;
 	    }
         
-        // Calculate required alignment based on minimum device offset alignment
-        // size_t minUboAlignment = gpuProperties.limits.minUniformBufferOffsetAlignment;
-        // dynamicAlignment = sizeof(DynamicUBO);
-        // if (minUboAlignment > 0) {
-        //     dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
-        // }
-
         VkDeviceSize staticBufferSize = sizeof(StaticUBO);
         VkDeviceSize dynamicBufferSize = dynamicAlignment * MAX_NUM_OBJECTS;
 
@@ -1057,8 +1121,8 @@ private:
         dynamicUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            staticUniformBuffersMapped[i] = createBuffer2(staticBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, staticUniformBuffers[i], staticUniformBuffersAllocation[i]);
-            dynamicUniformBuffersMapped[i] = createBuffer2(dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, dynamicUniformBuffers[i], dynamicDynamicBuffersAllocation[i]);
+            staticUniformBuffersMapped[i] = createBuffer(staticBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, staticUniformBuffers[i], staticUniformBuffersAllocation[i]);
+            dynamicUniformBuffersMapped[i] = createBuffer(dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferType::STAGING_BUFFER, dynamicUniformBuffers[i], dynamicDynamicBuffersAllocation[i]);
         }
     }
 
@@ -1141,7 +1205,7 @@ private:
         }
     }
 
-    void* createBuffer2(VkDeviceSize size, VkBufferUsageFlags usage, BufferType bufferType, VkBuffer& buffer, VmaAllocation& allocation) {
+    void* createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, BufferType bufferType, VkBuffer& buffer, VmaAllocation& allocation) {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
@@ -1167,32 +1231,6 @@ private:
         }
 
         return allocInfo.pMappedData;
-    }
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-        if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
-        if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate buffer memory!");
-        }
-
-        vkBindBufferMemory(device, buffer, bufferMemory, 0);
     }
 
     VkCommandBuffer beginSingleTimeCommands() {
@@ -1355,11 +1393,13 @@ private:
         DynamicUBO dUbo{};
         dUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(50, 0, 0));
         dUbo.model = glm::scale(dUbo.model, glm::vec3(100, 100, 100));
+        dUbo.array_index = 0;
 
         dynamicUBOs.push_back(dUbo);
 
         dUbo = DynamicUBO{};
         dUbo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
+        dUbo.array_index = 1;
 
         dynamicUBOs.push_back(dUbo);
 
@@ -1367,6 +1407,7 @@ private:
         dUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-50, 0, 0));
         dUbo.model = glm::rotate(dUbo.model, (float)glm::radians(45.0), glm::vec3(0.0f, 0.0f, 1.0f));
         dUbo.model = glm::scale(dUbo.model, glm::vec3(70, 70, 70));
+        dUbo.array_index = 2;
 
         dynamicUBOs.push_back(dUbo);
 
