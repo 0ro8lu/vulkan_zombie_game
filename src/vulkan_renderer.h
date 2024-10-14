@@ -1,6 +1,7 @@
 #ifndef _VULKAN_RENDERER_H_
 #define _VULKAN_RENDERER_H_
 
+#include <cstdint>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -10,9 +11,6 @@
 
 #include <optional>
 #include <vector>
-#include <iostream>
-#include <set>
-#include <string>
 
 #include "utils.h"
 
@@ -60,41 +58,48 @@ struct Vertex {
         return attributeDescriptions;
     }
 };
-// struct Vertex {
-//     glm::vec2 pos;
-//     glm::vec3 color;
-//     glm::vec2 texCoord;
 
-//     static VkVertexInputBindingDescription getBindingDescription() {
-//         VkVertexInputBindingDescription bindingDescription{};
-//         bindingDescription.binding = 0;
-//         bindingDescription.stride = sizeof(Vertex);
-//         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+struct InstanceData {
+    glm::vec3 position;
+    glm::vec3 rotation;
+    float scale;
+    uint32_t textureIndex;
 
-//         return bindingDescription;
-//     }
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 1;
+        bindingDescription.stride = sizeof(InstanceData);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-//     static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-//         std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+        return bindingDescription;
+    }
 
-//         attributeDescriptions[0].binding = 0;
-//         attributeDescriptions[0].location = 0;
-//         attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-//         attributeDescriptions[0].offset = offsetof(Vertex, pos);
+    static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
-//         attributeDescriptions[1].binding = 0;
-//         attributeDescriptions[1].location = 1;
-//         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-//         attributeDescriptions[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[0].binding = 1;
+        attributeDescriptions[0].location = 2;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(InstanceData, position);
 
-//         attributeDescriptions[2].binding = 0;
-//         attributeDescriptions[2].location = 2;
-//         attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-//         attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+        attributeDescriptions[1].binding = 1;
+        attributeDescriptions[1].location = 3;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(InstanceData, rotation);
 
-//         return attributeDescriptions;
-//     }
-// };
+        attributeDescriptions[2].binding = 1;
+        attributeDescriptions[2].location = 4;
+        attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(InstanceData, scale);
+
+        attributeDescriptions[3].binding = 1;
+        attributeDescriptions[3].location = 5;
+        attributeDescriptions[3].format = VK_FORMAT_R32_SINT;
+        attributeDescriptions[3].offset = offsetof(InstanceData, textureIndex);
+
+        return attributeDescriptions;
+    }
+};
 
 enum BufferType {
     STAGING_BUFFER,
@@ -108,6 +113,7 @@ public:
 
     void wait();
     void drawFrame(const std::vector<DynamicUBO> gameObjectData);
+    void draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData);
     
     bool framebufferResized = false;
 private:
@@ -135,19 +141,25 @@ private:
     void createCommandBuffers();
     void createSyncObjects();
 
+    void allocateInstanceBuffer(size_t bufferLen, VkBuffer& instanceBuffer, VmaAllocation& instanceBufferAllocation);
+    void uploadToInstanceBuffer(VkBuffer& instanceBuffer, const std::vector<InstanceData>& instanceData);
+    void deallocateInstanceBuffer(VkBuffer& instanceBuffer, VmaAllocation& instanceBufferAllocation);
+
     bool isDeviceSuitable(VkPhysicalDevice device);
     bool checkValidationLayerSupport();
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    // void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, std::vector<std::pair<VkBuffer, size_t>> renderData, uint32_t imageIndex);
+
     void recreateSwapChain();
 
     VkShaderModule createShaderModule(const std::vector<char>& code);
 
     VkImageView createImageView(VkImage image, VkFormat format);
 
-    void updateUniformBuffer(uint32_t currentImage, std::vector<DynamicUBO> gameObjectData);
+    void updateUniformBuffer(uint32_t currentImage);
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
@@ -200,12 +212,6 @@ private:
         {{1.0f, 1.0f}, {0.0f, 1.0f}},
         {{0.0f, 1.0f}, {1.0f, 1.0f}}
     };
-    // const std::vector<Vertex> vertices = {
-    //     {{0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    //     {{1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    //     {{1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-    //     {{0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-    // };
 
     const std::vector<uint16_t> indices = {
         0, 1, 2, 2, 3, 0
@@ -234,7 +240,7 @@ private:
     VkDevice device;
 
     std::vector<VkBuffer> staticUniformBuffers;
-    std::vector<VkBuffer> dynamicUniformBuffers;
+    // std::vector<VkBuffer> dynamicUniformBuffers;
     std::vector<VmaAllocation> staticUniformBuffersAllocation;
     std::vector<VmaAllocation> dynamicDynamicBuffersAllocation;
     std::vector<void*> staticUniformBuffersMapped;
@@ -268,6 +274,8 @@ private:
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+
+    friend class GameGraphicsManager;
 };
 
 #endif

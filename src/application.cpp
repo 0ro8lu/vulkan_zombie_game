@@ -1,5 +1,4 @@
 #include "application.h"
-#include "utils.h"
 
 Application::Application() {
 	// Init window
@@ -8,6 +7,7 @@ Application::Application() {
 	// Init Vulkan
 	vulkanRenderer.reset(new VulkanRenderer(gameWindow->getWindow(), 8, 100, 2));
 
+	gameGraphicsManager.reset(new GameGraphicsManager(vulkanRenderer));
 }
 
 void Application::run() {
@@ -18,8 +18,10 @@ void Application::run() {
 
 		game.update();
 
+		gameGraphicsManager->draw(game.getLevelSprites());
+
 		// Render stuff on screen	
-		vulkanRenderer->drawFrame(game.getObjectData());
+		// vulkanRenderer->drawFrame(game.getObjectData());
 
 	}
 	vulkanRenderer->wait();

@@ -1,14 +1,10 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-#include "utils.h"
 #include "entity.h"
 
-#include <_types/_uint32_t.h>
 #include <string>
 #include <vector>
-#include <sstream>
-#include <iostream>
 
 enum GameState
 {
@@ -25,7 +21,11 @@ public:
 
   void update();
 
-  const std::vector<DynamicUBO> getObjectData() const { return objectData; }
+  const std::vector<glm::vec2>& getLevelSprites() const { return levelSprites; }
+  const std::vector<Entity>& getHumans() const { return humans; }
+  const std::vector<Entity>& getZombies() const { return zombies; }
+
+  // const std::vector<DynamicUBO> getObjectData() const { return objectData; }
 
 private:
   void loadLevel(uint32_t levelIndex);
@@ -37,17 +37,14 @@ private:
   uint32_t levelWidth;
   uint32_t levelHeight;
 
-  std::vector<DynamicUBO> objectData;
+  // std::vector<DynamicUBO> objectData;
 
   std::vector<std::string> levels;
   std::vector<char> levelData;
 
-  // TODO: 2 vectors
+  std::vector<glm::vec2> levelSprites;
   std::vector<Entity> humans;
   std::vector<Entity> zombies;
-  // humans
-  // zombies
-  // player
 };
 
 #endif

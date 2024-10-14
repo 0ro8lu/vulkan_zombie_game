@@ -1,13 +1,12 @@
 #include "game.h"
-#include "utils.h"
-#include <_types/_uint32_t.h>
+#include <fstream>
 
 Game::Game()
 {
   levels.push_back("../levels/level1");
   assert(levels.size() > 0);
 
-  objectData.reserve(100);
+  // objectData.reserve(100);
   levelData.reserve(100);
 
   levelHeight = 0;
@@ -55,16 +54,19 @@ Game::loadLevel(uint32_t levelIndex)
     
     for(int x = 0; x < levelWidth; x++) {
       levelData.push_back(line[x]);
-      DynamicUBO dUbo{};
+      // DynamicUBO dUbo{};
       
       switch (line[x]) {
       case '#':
-        dUbo.model =
-        glm::translate(glm::mat4(1.0f), glm::vec3(x * scale, levelHeight * scale, 0));
-        dUbo.model = glm::scale(dUbo.model, glm::vec3(scale, scale, 0));
-        dUbo.array_index = 0;
 
-        objectData.push_back(dUbo);
+        levelSprites.push_back(glm::vec2(x * scale, levelHeight * scale));
+
+        // dUbo.model =
+        // glm::translate(glm::mat4(1.0f), glm::vec3(x * scale, levelHeight * scale, 0));
+        // dUbo.model = glm::scale(dUbo.model, glm::vec3(scale, scale, 0));
+        // dUbo.array_index = 0;
+
+        // objectData.push_back(dUbo);
         break;
       case '@':
         //TODO: case for the player
@@ -81,7 +83,7 @@ Game::loadLevel(uint32_t levelIndex)
 
         break;
       default:
-        throw std::runtime_error("Unsupported char in " + line + " in level " + level);
+        throw std::runtime_error("Unsupported char in " + line + " in level " + level); 
         break;
       }
     }
