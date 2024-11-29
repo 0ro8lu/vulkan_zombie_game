@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0...3.25)
+cmake_minimum_required(VERSION 3.0...3.50)
 project(
     VulkanTest
     VERSION 0.1.0
@@ -25,8 +25,8 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/VulkanMemoryAllocator-3.1.0 SYSTEM)
 target_include_directories(App PRIVATE "${CMAKE_SOURCE_DIR}/deps/glm")
 target_include_directories(App PRIVATE "${CMAKE_SOURCE_DIR}/deps/stb_image")
 
-# Use C++17
-set_target_properties(App PROPERTIES CXX_STANDARD 17)
+# Use C++20
+set_target_properties(App PROPERTIES CXX_STANDARD 20)
 
 # Turn all warnings on and treat them as errors so that are not
 # tempted to ignore them (See utils.cmake for details).

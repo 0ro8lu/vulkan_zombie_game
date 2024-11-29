@@ -6,6 +6,7 @@
 
 struct Entity {
   glm::vec2 position;
+  glm::vec2 direction;
   float health;
   float speed;
 };

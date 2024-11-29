@@ -12,16 +12,17 @@ public:
     ~GameWindow();
 
     void setFramebufferCallback(void* userPointer, void(* GLFWframebuffersizefun) (GLFWwindow *window, int width, int height));
-    void update();
 
-    uint32_t getWidth() const { return width; }
-    uint32_t getHeight() const { return height; }
+    static uint32_t getWidth() { return width; }
+    static uint32_t getHeight() { return height; }
     GLFWwindow* getWindow() const { return window; }
+
+    void close() { glfwSetWindowShouldClose(window, 1); }
     bool shouldClose() const { return glfwWindowShouldClose(window); }
 
 private:
-    uint32_t width, height;
-    std::string title;
+    static uint32_t width, height;
+    static std::string title;
     
     GLFWwindow* window;
 };

@@ -60,9 +60,7 @@ struct Vertex {
 };
 
 struct InstanceData {
-    glm::vec3 position;
-    glm::vec3 rotation;
-    float scale;
+    glm::mat4 model;
     uint32_t textureIndex;
 
     static VkVertexInputBindingDescription getBindingDescription() {
@@ -74,28 +72,33 @@ struct InstanceData {
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+    static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
 
         attributeDescriptions[0].binding = 1;
         attributeDescriptions[0].location = 2;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(InstanceData, position);
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(InstanceData, model);
 
         attributeDescriptions[1].binding = 1;
         attributeDescriptions[1].location = 3;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(InstanceData, rotation);
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(InstanceData, model) + sizeof(glm::vec4);
 
         attributeDescriptions[2].binding = 1;
         attributeDescriptions[2].location = 4;
-        attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(InstanceData, scale);
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(InstanceData, model) + sizeof(glm::vec4) * 2;
 
         attributeDescriptions[3].binding = 1;
         attributeDescriptions[3].location = 5;
-        attributeDescriptions[3].format = VK_FORMAT_R32_SINT;
-        attributeDescriptions[3].offset = offsetof(InstanceData, textureIndex);
+        attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attributeDescriptions[3].offset = offsetof(InstanceData, model) + sizeof(glm::vec4) * 3;
+
+        attributeDescriptions[4].binding = 1;
+        attributeDescriptions[4].location = 6;
+        attributeDescriptions[4].format = VK_FORMAT_R32_SINT;
+        attributeDescriptions[4].offset = offsetof(InstanceData, textureIndex);
 
         return attributeDescriptions;
     }
@@ -112,8 +115,9 @@ public:
     ~VulkanRenderer();
 
     void wait();
-    void drawFrame(const std::vector<DynamicUBO> gameObjectData);
-    void draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData);
+    // void drawFrame(const std::vector<DynamicUBO> gameObjectData);
+    void draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData, const glm::mat4& camera);
+    // void draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData);
     
     bool framebufferResized = false;
 private:
@@ -159,7 +163,8 @@ private:
 
     VkImageView createImageView(VkImage image, VkFormat format);
 
-    void updateUniformBuffer(uint32_t currentImage);
+    void updateUniformBuffer(uint32_t currentImage, const glm::mat4& camera);
+    // void updateUniformBuffer(uint32_t currentImage);
 
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
@@ -207,10 +212,10 @@ private:
     };
 
     const std::vector<Vertex> vertices = {
-        {{0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 1.0f}, {0.0f, 1.0f}},
-        {{0.0f, 1.0f}, {1.0f, 1.0f}}
+        {{-0.5f, -0.5f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f}}
     };
 
     const std::vector<uint16_t> indices = {
@@ -275,7 +280,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
-    friend class GameGraphicsManager;
+    friend class GameView;
 };
 
 #endif

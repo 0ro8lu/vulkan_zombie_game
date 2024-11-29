@@ -57,7 +57,6 @@ VulkanRenderer::~VulkanRenderer() {
     // Destroy static and dynamic buffers
     for (size_t i = 0; i < max_frames_flight; i++) {
         vmaDestroyBuffer(allocator, staticUniformBuffers[i], staticUniformBuffersAllocation[i]);
-        // vmaDestroyBuffer(allocator, dynamicUniformBuffers[i], dynamicDynamicBuffersAllocation[i]);
     }
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -602,8 +601,11 @@ VkShaderModule VulkanRenderer::createShaderModule(const std::vector<char>& code)
 }
 
 void VulkanRenderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("../shaders/vert.spv");
-    auto fragShaderCode = readFile("../shaders/frag.spv");
+      // auto vertShaderCode = readFile("../../shaders/vert.spv");
+      // auto fragShaderCode = readFile("../../shaders/frag.spv");
+    
+  auto vertShaderCode = readFile("../shaders/vert.spv");
+  auto fragShaderCode = readFile("../shaders/frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -675,7 +677,13 @@ void VulkanRenderer::createGraphicsPipeline() {
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -905,7 +913,9 @@ void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t 
 }
 
 void VulkanRenderer::createTextureArray() {
-    std::vector<std::string> textureFiles = {"../textures/bricks.jpg", "../textures/texture2.jpg", "../textures/texture3.jpg"};
+      // std::vector<std::string> textureFiles = {"../../textures/bricks.jpg", "../../textures/human.png", "../../textures/zombie.png", "../../textures/gameover.png", "../../textures/victory.png"};
+    
+  std::vector<std::string> textureFiles = {"../textures/bricks.jpg", "../textures/human.png", "../textures/zombie.png", "../textures/gameover.png", "../textures/victory.png"};
     uint32_t layerCount = textureFiles.size();
     
     assert(layerCount <= max_layers);
@@ -1285,65 +1295,6 @@ void VulkanRenderer::recreateSwapChain() {
     createFramebuffers();
 }
 
-// void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-//     VkCommandBufferBeginInfo beginInfo{};
-//     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-//     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-//         throw std::runtime_error("failed to begin recording command buffer!");
-//     }
-
-//     VkRenderPassBeginInfo renderPassInfo{};
-//     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-//     renderPassInfo.renderPass = renderPass;
-//     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-//     renderPassInfo.renderArea.offset = {0, 0};
-//     renderPassInfo.renderArea.extent = swapChainExtent;
-
-//     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-//     renderPassInfo.clearValueCount = 1;
-//     renderPassInfo.pClearValues = &clearColor;
-
-//     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-//         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-//         VkViewport viewport{};
-//         viewport.x = 0.0f;
-//         viewport.y = 0.0f;
-//         viewport.width = (float) swapChainExtent.width;
-//         viewport.height = (float) swapChainExtent.height;
-//         viewport.minDepth = 0.0f;
-//         viewport.maxDepth = 1.0f;
-//         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-//         VkRect2D scissor{};
-//         scissor.offset = {0, 0};
-//         scissor.extent = swapChainExtent;
-//         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-//         VkBuffer vertexBuffers[] = {vertexBuffer};
-//         VkDeviceSize offsets[] = {0};
-//         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-//         // vkCmdBindVertexBuffers(commandBuffer, 1, 1, vertexBuffers, offsets);
-
-//         vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-//         for(int i = 0; i < numObjects; i++) {
-//             uint32_t dynamicOffset = static_cast<uint32_t>(i * dynamicAlignment);
-
-//             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 1, &dynamicOffset);
-
-//             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-//         }
-
-//     vkCmdEndRenderPass(commandBuffer);
-
-//     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-//         throw std::runtime_error("failed to record command buffer!");
-//     }
-// }
-
 void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, std::vector<std::pair<VkBuffer, size_t>> renderData, uint32_t imageIndex) {
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1400,7 +1351,7 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, std::vec
     }
 }
 
-void VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
+void VulkanRenderer::updateUniformBuffer(uint32_t currentImage, const glm::mat4& camera) {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1409,13 +1360,13 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage) {
     uint8_t* mappedUniform = reinterpret_cast<uint8_t*>(dynamicUniformBuffersMapped[currentImage]);
 
     StaticUBO ubo{};
-    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = camera;
     ubo.proj = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f, -100.0f, 100.0f);
 
     memcpy(staticUniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
-void VulkanRenderer::draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData) {
+void VulkanRenderer::draw(const std::vector<std::pair<VkBuffer, size_t>>& renderData, const glm::mat4& camera) {
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
@@ -1428,7 +1379,7 @@ void VulkanRenderer::draw(const std::vector<std::pair<VkBuffer, size_t>>& render
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-    updateUniformBuffer(currentFrame);
+    updateUniformBuffer(currentFrame, camera);
 
     vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
