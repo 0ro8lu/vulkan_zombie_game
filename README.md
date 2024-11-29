@@ -12,9 +12,9 @@ Anywho, you're here for the game ain't ya, curious traveler.
 You shoot and evade zombies. Try not to kill your fellow humans along the way ^^ The end.
 Currently i only lazily made two levels, its just a """tech demo""" for me.
 
-![Alt text](/screenshots/win.jpg?raw=true "Optional Title") 
-![Alt text](/screenshots/loose.jpg?raw=true "Optional Title") 
-![Alt text](/screenshots/close.jpg?raw=true "Optional Title")
+![Alt text](/screenshots/win.png?raw=true "Optional Title") 
+![Alt text](/screenshots/loose.png?raw=true "Optional Title") 
+![Alt text](/screenshots/close.png?raw=true "Optional Title")
 
 # TODO:
 - [ ] Having to send vertex data every frame is stupid. we can define that in the shader code.
